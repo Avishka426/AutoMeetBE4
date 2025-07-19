@@ -13,6 +13,7 @@ configurable string googleClientSecret = ?;
 configurable string googleRedirectUri = ?;
 configurable string googleCalendarRedirectUri = ?;
 configurable string frontendBaseUrl = ?;
+configurable string googleCalendarScopes = ?;
 configurable string JWT_SECRET = ?;
 
 // Function to hash passwords using SHA-256
@@ -51,7 +52,7 @@ function generateJwtToken(User user) returns string|error {
 }
 
 // Function to validate JWT token from cookie and extract username
-function validateAndGetUsernameFromCookie(http:Request request) returns string?|error {
+public function validateAndGetUsernameFromCookie(http:Request request) returns string?|error {
     http:Cookie[] cookies = request.getCookies();
     string? token = ();
 

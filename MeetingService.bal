@@ -1,27 +1,9 @@
 import mongodb_atlas_app.mongodb;
 
-import ballerina/crypto;
 import ballerina/http;
 import ballerina/log;
 import ballerina/time;
 import ballerina/uuid;
-
-// Google OAuth config - add your client values in production
-configurable string googleClientId = ?;
-configurable string googleClientSecret = ?;
-configurable string googleRedirectUri = ?;
-configurable string googleCalendarRedirectUri = ?;
-configurable string frontendBaseUrl = ?;
-configurable string googleCalendarScopes = ?;
-
-// JWT signing key - in production, this should be in a secure configuration
-configurable string JWT_SECRET = ?;
-
-// Function to hash passwords using SHA-256
-function hashPassword(string password) returns string {
-    byte[] hashedBytes = crypto:hashSha256(password.toBytes());
-    return hashedBytes.toBase16();
-}
 
 @http:ServiceConfig {
     cors: {

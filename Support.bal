@@ -1,7 +1,6 @@
 import mongodb_atlas_app.mongodb;
 import ballerina/email;
 import ballerina/http;
-import ballerina/jwt;
 import ballerina/log;
 import ballerina/regex;
 import ballerina/uuid;
@@ -519,74 +518,6 @@ public function notifyCreatorToReschedule(Meeting meeting) returns error? {
     }
 
     return;
-}
-
-// New helper function to extract JWT token from cookie
-public function validateAndGetUsernameFromCookie(http:Request request) returns string?|error {
-    // Try to get the auth_token cookie
-    http:Cookie[] cookies = request.getCookies();
-    string? token = ();
-
-    foreach http:Cookie cookie in cookies {
-        if cookie.name == "auth_token" {
-            token = cookie.value;
-            break;
-        }
-    }
-
-    // If no auth cookie found, check for Authorization header as fallback
-    if token is () {
-        string authHeader = check request.getHeader("Authorization");
-
-        if authHeader.startsWith("Bearer ") {
-            token = authHeader.substring(7);
-        } else {
-            log:printError("No authentication token found in cookies or headers");
-            return ();
-        }
-    }
-
-    // Validate the JWT token - Using updated structure for JWT 2.13.0
-    jwt:ValidatorConfig validatorConfig = {
-        issuer: "automeet",
-        audience: "automeet-app",
-        clockSkew: 60,
-        signatureConfig: {
-            secret: JWT_SECRET // For HMAC based JWT
-        }
-    };
-
-    jwt:Payload|error validationResult = jwt:validate(token, validatorConfig);
-
-    if (validationResult is error) {
-        log:printError("JWT validation failed", validationResult);
-        return ();
-    }
-
-    jwt:Payload payload = validationResult;
-
-    // First check if the username might be in the subject field
-    if (payload.sub is string) {
-        return payload.sub;
-    }
-
-    // Direct access to claim using index accessor
-    var customClaims = payload["customClaims"];
-    if (customClaims is map<json>) {
-        var username = customClaims["username"];
-        if (username is string) {
-            return username;
-        }
-    }
-
-    // Try to access username directly as a rest field
-    var username = payload["username"];
-    if (username is string) {
-        return username;
-    }
-
-    log:printError("Username not found in JWT token");
-    return ();
 }
 
 public function processHosts(string creatorUsername, string[] hostIds) returns MeetingParticipant[]|error {
@@ -1119,62 +1050,6 @@ public function validateContactIds(string username, string[] contactIds) returns
     return true;
 }
 
-// Utility method to verify calendar access with the given access token
-public function verifyCalendarAccess(string accessToken) returns boolean|error {
-    // Create HTTP client for Google Calendar API
-    http:Client calendarClient = check new ("https://www.googleapis.com");
-
-    // Try to access the user's calendar list as a verification
-    map<string|string[]> headers = {"Authorization": "Bearer " + accessToken};
-    http:Response calendarResponse = check calendarClient->get("/calendar/v3/users/me/calendarList", headers);
-
-    // Check if we got a successful response
-    if (calendarResponse.statusCode == 200) {
-        log:printInfo("Successfully verified calendar access");
-        return true;
-    } else {
-        json errorPayload = check calendarResponse.getJsonPayload();
-        log:printError("Failed to verify calendar access: " + errorPayload.toString());
-        return false;
-    }
-}
-
-// Helper method to generate JWT token with fixed customClaims
-public function generateJwtToken(User user) returns string|error {
-    // Create a proper map for custom claims
-    map<json> _ = {
-        "name": user.name,
-        "role": user.role
-    };
-
-    // Create a proper map for custom claims
-    jwt:IssuerConfig issuerConfig = {
-        username: user.username, // This sets the 'sub' field
-        issuer: "automeet",
-        audience: ["automeet-app"],
-        expTime: <decimal>time:utcNow()[0] + 36000, // Token valid for 1 hour
-        signatureConfig: {
-            algorithm: jwt:HS256,
-            config: JWT_SECRET
-        },
-        customClaims: {
-            "username": user.username, // Add this explicitly for custom access
-            "name": user.name,
-            "role": user.role,
-            "calendar_connected": user.calendar_connected
-        }
-    };
-
-    string|jwt:Error token = jwt:issue(issuerConfig);
-
-    if (token is jwt:Error) {
-        log:printError("Error generating JWT token", token);
-        return error("Error generating authentication token");
-    }
-
-    return token;
-}
-
 public function hasAuthorizationHeader(http:Request req) returns boolean {
     return req.hasHeader("Authorization");
 }
@@ -1581,16 +1456,6 @@ The AUTOMEET Team`,
     
     log:printInfo("Welcome email sent successfully to: " + userEmail);
     return;
-}
-
-// Send registration welcome email asynchronously (non-blocking)
-public function sendWelcomeEmailAsync(string userEmail, string userName) {
-    worker welcomeEmailWorker {
-        error? result = sendWelcomeEmail(userEmail, userName);
-        if result is error {
-            log:printError("Async welcome email sending failed", result);
-        }
-    }
 }
 
 // HTML template for login welcome email
