@@ -3,7 +3,129 @@ import ballerina/log;
 import ballerina/jwt;
 import ballerina/url;
 import ballerina/uuid;
+import ballerina/time;
+import ballerina/crypto;
 import mongodb_atlas_app.mongodb;
+
+// Configurable variables
+configurable string googleClientId = ?;
+configurable string googleClientSecret = ?;
+configurable string googleRedirectUri = ?;
+configurable string googleCalendarRedirectUri = ?;
+configurable string frontendBaseUrl = ?;
+configurable string JWT_SECRET = ?;
+
+// Function to hash passwords using SHA-256
+function hashPassword(string password) returns string {
+    byte[] hashedBytes = crypto:hashSha256(password.toBytes());
+    return hashedBytes.toBase16();
+}
+
+// Helper method to generate JWT token
+function generateJwtToken(User user) returns string|error {
+    jwt:IssuerConfig issuerConfig = {
+        username: user.username,
+        issuer: "automeet",
+        audience: ["automeet-app"],
+        expTime: <decimal>time:utcNow()[0] + 3600, // Token valid for 1 hour
+        signatureConfig: {
+            algorithm: jwt:HS256,
+            config: JWT_SECRET
+        },
+        customClaims: {
+            "username": user.username,
+            "name": user.name,
+            "role": user.role,
+            "calendar_connected": user.calendar_connected
+        }
+    };
+
+    string|jwt:Error token = jwt:issue(issuerConfig);
+
+    if (token is jwt:Error) {
+        log:printError("Error generating JWT token", token);
+        return error("Error generating authentication token");
+    }
+
+    return token;
+}
+
+// Function to validate JWT token from cookie and extract username
+function validateAndGetUsernameFromCookie(http:Request request) returns string?|error {
+    http:Cookie[] cookies = request.getCookies();
+    string? token = ();
+
+    foreach http:Cookie cookie in cookies {
+        if cookie.name == "auth_token" {
+            token = cookie.value;
+            break;
+        }
+    }
+
+    if token is () {
+        return ();
+    }
+
+    jwt:ValidatorConfig validatorConfig = {
+        issuer: "automeet",
+        audience: ["automeet-app"],
+        clockSkew: 60,
+        signatureConfig: {
+            secret: JWT_SECRET
+        }
+    };
+
+    jwt:Payload|error validationResult = jwt:validate(token, validatorConfig);
+
+    if (validationResult is error) {
+        log:printError("JWT validation failed", validationResult);
+        return ();
+    }
+
+    jwt:Payload payload = validationResult;
+
+    if (payload.sub is string) {
+        return payload.sub;
+    }
+
+    var customClaims = payload["customClaims"];
+    if (customClaims is map<json>) {
+        var username = customClaims["username"];
+        if (username is string) {
+            return username;
+        }
+    }
+
+    var username = payload["username"];
+    if (username is string) {
+        return username;
+    }
+
+    log:printError("Username not found in JWT token");
+    return ();
+}
+
+// Function to verify calendar access
+function verifyCalendarAccess(string accessToken) returns boolean|error {
+    http:Client calendarClient = check new ("https://www.googleapis.com");
+    map<string|string[]> headers = {"Authorization": "Bearer " + accessToken};
+    http:Response calendarResponse = check calendarClient->get("/calendar/v3/users/me/calendarList", headers);
+
+    if (calendarResponse.statusCode == 200) {
+        log:printInfo("Successfully verified calendar access");
+        return true;
+    } else {
+        json errorPayload = check calendarResponse.getJsonPayload();
+        log:printError("Failed to verify calendar access: " + errorPayload.toString());
+        return false;
+    }
+}
+
+// Async email functions (placeholder implementations)
+function sendWelcomeEmailAsync(string username, string name) {
+    // Placeholder for welcome email functionality
+    log:printInfo("Welcome email would be sent to: " + username);
+}
 
 @http:ServiceConfig {
     cors: {
@@ -636,7 +758,7 @@ resource function post login(http:Caller caller, http:Request req) returns error
         // Validate the token
         jwt:ValidatorConfig validatorConfig = {
             issuer: "automeet",
-            audience: "automeet-app",
+            audience: ["automeet-app"],
             signatureConfig: {
                 secret: JWT_SECRET
             }
@@ -790,7 +912,7 @@ resource function post login(http:Caller caller, http:Request req) returns error
         // Validate the token
         jwt:ValidatorConfig validatorConfig = {
             issuer: "automeet",
-            audience: "automeet-app",
+            audience: ["automeet-app"],
             signatureConfig: {
                 secret: JWT_SECRET
             }
@@ -888,7 +1010,7 @@ resource function post login(http:Caller caller, http:Request req) returns error
         // Validate the token
         jwt:ValidatorConfig validatorConfig = {
             issuer: "automeet",
-            audience: "automeet-app",
+            audience: ["automeet-app"],
             signatureConfig: {
                 secret: JWT_SECRET
             }
@@ -984,7 +1106,7 @@ resource function post login(http:Caller caller, http:Request req) returns error
         // Validate the token
         jwt:ValidatorConfig validatorConfig = {
             issuer: "automeet",
-            audience: "automeet-app",
+            audience: ["automeet-app"],
             signatureConfig: {
                 secret: JWT_SECRET
             }
