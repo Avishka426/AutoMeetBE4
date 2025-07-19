@@ -415,6 +415,12 @@ dependencies = [
 ]
 modules = [
 	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app"},
-	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.mongodb"}
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.analytics"},
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.auth"},
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.community"},
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.meetings"},
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.messaging"},
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.mongodb"},
+	{org = "somap", packageName = "mongodb_atlas_app", moduleName = "mongodb_atlas_app.users"}
 ]
 

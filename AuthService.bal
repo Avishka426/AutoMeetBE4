@@ -3,12 +3,11 @@ import ballerina/log;
 import ballerina/jwt;
 import ballerina/url;
 import ballerina/uuid;
-import ballerina/time;
 import mongodb_atlas_app.mongodb;
 
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://localhost:3000", "http://localhost:5173"],
+        allowOrigins: ["http://localhost:3000", "http://localhost:5173", "https://3a098ee1-d32d-4afd-9ad3-5fcbb939b60e-dev.e1-us-east-azure.choreoapis.dev"],
         allowCredentials: true,
         allowHeaders: ["content-type", "authorization"],
         allowMethods: ["POST", "GET", "OPTIONS", "PUT", "DELETE"],
@@ -222,11 +221,11 @@ resource function post login(http:Caller caller, http:Request req) returns error
     // Generate JWT token 
     string token = check generateJwtToken(user);
     
-    // Get current time and device info
-    time:Utc utcNow = time:utcNow();
-    string currentTime = time:utcToString(utcNow);
-    string|http:HeaderNotFoundError userAgentResult = req.getHeader("User-Agent");
-    string userAgent = userAgentResult is string ? userAgentResult : "Chrome Extension";
+    // Get current time and device info (for potential future use)
+    // time:Utc utcNow = time:utcNow();
+    // string currentTime = time:utcToString(utcNow);
+    // string|http:HeaderNotFoundError userAgentResult = req.getHeader("User-Agent");
+    // string userAgent = userAgentResult is string ? userAgentResult : "Chrome Extension";
     
     // Send login welcome email asynchronously (non-blocking)
     // sendLoginWelcomeEmailAsync(user.username, user.name, currentTime, userAgent);

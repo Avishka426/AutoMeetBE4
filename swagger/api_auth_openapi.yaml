@@ -1,0 +1,172 @@
+openapi: 3.0.0
+info:
+  title: AutoMeet Authentication API
+  description: Authentication service for AutoMeet application
+  version: 0.1.0
+  contact:
+    name: AutoMeet Team
+    email: support@automeet.com
+
+servers:
+  - url: https://3a098ee1-d32d-4afd-9ad3-5fcbb939b60e-dev.e1-us-east-azure.choreoapis.dev/api/auth
+    description: Production server
+  - url: http://localhost:8080/api/auth
+    description: Development server
+
+paths:
+  /signup:
+    post:
+      summary: User registration
+      description: Register a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: Unique username
+                password:
+                  type: string
+                  description: User password
+                name:
+                  type: string
+                  description: User's full name
+                isadmin:
+                  type: boolean
+                  description: Admin privileges
+                  default: false
+                role:
+                  type: string
+                  description: User role
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  username:
+                    type: string
+        '400':
+          description: Bad request
+        '409':
+          description: User already exists
+
+  /login:
+    post:
+      summary: User login
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                  name:
+                    type: string
+                  isadmin:
+                    type: boolean
+                  role:
+                    type: string
+                  success:
+                    type: boolean
+                  calendar_connected:
+                    type: boolean
+        '401':
+          description: Invalid credentials
+
+  /logout:
+    get:
+      summary: User logout
+      description: Clear authentication token and logout user
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /google/auth:
+    get:
+      summary: Google OAuth authentication
+      description: Redirect to Google OAuth for authentication
+      responses:
+        '302':
+          description: Redirect to Google OAuth
+
+  /google/callback:
+    get:
+      summary: Google OAuth callback
+      description: Handle Google OAuth callback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: OAuth authorization code
+      responses:
+        '200':
+          description: Authentication successful
+        '400':
+          description: Authentication failed
+
+  /calendarStatus:
+    get:
+      summary: Check calendar connection status
+      description: Get the current Google Calendar connection status
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Calendar status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth_token
+      description: JWT token stored in HTTP-only cookie
